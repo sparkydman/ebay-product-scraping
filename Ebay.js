@@ -154,6 +154,8 @@ class Ebay {
       {}
     );
 
+    sortedArr.type = `Date and numbers of sold ${this._text} from ebay`;
+
     await this._page.waitForTimeout(3000);
 
     // close browser instance
