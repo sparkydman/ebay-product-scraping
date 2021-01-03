@@ -3,7 +3,9 @@
 **Usage:**
 
 ```
+npm install
+
 node index.js
 ```
 
-#### Create instance of Ebay class and pass in text to search and date to stop pulling ex. 31/12/2019. In case the date is not provided, it will pull all the sold items.
+#### Create instance of Ebay class and pass in text to search and date to stop pulling ex. mm/dd/yyyy. In case the date is not provided, it will pull all the sold items.
