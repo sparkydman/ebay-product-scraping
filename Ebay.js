@@ -10,16 +10,15 @@ class Ebay {
     this._page = null;
     this._text = text;
     this._date = date
-      ? format(new Date(date), 'd MMM, yyyy')
+      ? format(new Date(date), 'MMM d, yyyy')
       : null; /* format the date the same format with the site we are scraping if the date is present */
   }
 
   //initialize the browser and load the page
   initialize = async () => {
-    this._browser = await puppeteer.launch({
-      headless: false,
-    });
+    this._browser = await puppeteer.launch();
     this._page = await this._browser.newPage();
+
     // Create interceptor prevent image source from loading therefore making the page to be faster
     await this._page.setRequestInterception(true);
     await this._page.on('request', (request) => {
@@ -29,6 +28,11 @@ class Ebay {
         request.continue();
       }
     });
+
+    // Created a user agent so that the page will not load any other version of the website in headless mode
+    await this._page.setUserAgent(
+      'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/61.0.3163.100 Safari/537.36'
+    );
 
     // goto the url and consider it fully loaded when there is no more than 2 network connection at least in 500s
     await this._page.goto('https://www.ebay.com/', {
@@ -51,6 +55,8 @@ class Ebay {
 
     // Filter to show only sold item
     await this._page.click('li[name="LH_Sold"] > div > a');
+
+    // await this._page.on('console', (msg) => console.log(msg.text()));
   };
 
   //   Filter the keywords down further by ensuring it's in the title or the subtitle
@@ -122,6 +128,9 @@ class Ebay {
 
       // loop through the items as the page number is less than totalpage
       for (let i = 0; i < totalPage; i++) {
+        await this._page.waitForSelector(
+          '.s-item .s-item__wrapper .s-item__info .s-item__title--tagblock__COMPLETED .POSITIVE'
+        );
         await this._page.$$eval(
           '.s-item .s-item__wrapper .s-item__info .s-item__title--tagblock__COMPLETED .POSITIVE',
           (e) => {
@@ -143,26 +152,30 @@ class Ebay {
         await this._page.click(
           '.srp-river-answer--BASIC_PAGINATION_V2 .s-pagination > span > span .pagination .pagination__next'
         );
-
         await this._page.waitForTimeout(1000);
       }
     }
 
-    // calculate the number of occrence of each date and create object of the date and total number of sold item
-    const sortedArr = allDays.reduce(
-      (prev, curr) => ((prev[curr] = ++prev[curr] || 1), prev),
-      {}
+    // calculate the number of occurrence of each date and create object array of the date and total number of sold item
+    let counted = [];
+    for (let c of allDays) {
+      const alreadyAdded = counted.map((value) => value.date);
+      if (alreadyAdded.includes(c)) {
+        counted[alreadyAdded.indexOf(c)].count += 1;
+      } else {
+        counted.push({ date: c, count: 1 });
+      }
+    }
+    const modifyResults = counted.map(
+      (result) => `${result.count} ${this._text} sold on ${result.date}`
     );
 
-    await this._page.waitForTimeout(3000);
+    await this._page.waitForTimeout(1000);
 
     // close browser instance
     await this._browser.close();
 
-    return {
-      type: `Date and numbers of sold ${this._text} from ebay`,
-      data: sortedArr,
-    };
+    return modifyResults;
   };
 }
 
